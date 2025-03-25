@@ -250,7 +250,7 @@
             position: sticky;
             top: 0;
             z-index: 10;
-            background: none;
+            background: var(--gradient-primary);
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
 
@@ -309,6 +309,14 @@
             margin-bottom: 10px;
         }
 
+        .tooltip-icon {
+            cursor: help;
+            color: var(--primary-color);
+            font-size: 18px;
+            vertical-align: middle;
+            margin-left: 5px;
+        }
+
         @media (max-width: 768px) {
             .container {
                 padding: 15px;
@@ -316,6 +324,31 @@
             .card-header h3 {
                 font-size: 1.1rem;
             }
+        }
+
+        /* Animacje dla powiadomień */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .save-notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--success-color);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            z-index: 1000;
+            animation: fadeIn 0.3s ease-out forwards;
+            display: flex;
+            align-items: center;
+        }
+
+        .save-notification .material-icons {
+            margin-right: 8px;
         }
     </style>
 </head>
@@ -378,18 +411,33 @@
                         <input type="number" step="0.01" class="form-control" id="property-size" value="50">
                     </div>
                     <div class="mb-3">
-                        <label for="life-insurance" class="form-label">Miesięczna kwota ubezpieczenia na życie (PLN):</label>
+                        <label for="life-insurance" class="form-label">
+                            Miesięczna kwota ubezpieczenia na życie (PLN):
+                            <i class="material-icons tooltip-icon" title="Stała kwota ubezpieczenia">help_outline</i>
+                        </label>
                         <input type="number" step="0.01" class="form-control" id="life-insurance" value="0">
                     </div>
                     <div class="form-check mb-3">
                         <input class="form-check-input" type="checkbox" id="percentage-insurance">
                         <label class="form-check-label" for="percentage-insurance">
                             Ubezpieczenie jako % od kwoty kredytu
+                            <i class="material-icons tooltip-icon" title="Ubezpieczenie liczone jako procent od początkowej kwoty kredytu">help_outline</i>
                         </label>
                     </div>
                     <div class="mb-3" id="insurance-percentage-container" style="display: none;">
                         <label for="insurance-percentage" class="form-label">Procent ubezpieczenia (%):</label>
                         <input type="number" step="0.001" class="form-control" id="insurance-percentage" value="0.035">
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="remaining-balance-insurance">
+                        <label class="form-check-label" for="remaining-balance-insurance">
+                            Ubezpieczenie od pozostałego kapitału
+                            <i class="material-icons tooltip-icon" title="Ubezpieczenie liczone jako procent od kapitału pozostałego do spłaty w danym miesiącu">help_outline</i>
+                        </label>
+                    </div>
+                    <div class="mb-3" id="remaining-insurance-percentage-container" style="display: none;">
+                        <label for="remaining-insurance-percentage" class="form-label">Procent ubezpieczenia od pozostałego kapitału (%):</label>
+                        <input type="number" step="0.001" class="form-control" id="remaining-insurance-percentage" value="0.035">
                     </div>
                     <button id="calculate-btn" class="btn btn-primary mt-3 w-100">
                         <i class="material-icons align-middle me-1" style="font-size: 18px;">calculate</i>
@@ -583,14 +631,128 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     $(document).ready(function() {
-        // Ustaw dzisiejszą datę jako domyślną
-        document.getElementById('start-date').valueAsDate = new Date();
-
         // Zmienne globalne
         let prepayments = [];
         let interestChanges = [];
         let originalSchedule = [];
         let modifiedSchedule = [];
+
+        // Inicjalizacja tooltipów Bootstrap
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'))
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        });
+
+        // Funkcja wczytująca dane z localStorage
+        function loadFromLocalStorage() {
+            // Wczytaj podstawowe parametry
+            if (localStorage.getItem('loanData')) {
+                try {
+                    const loanData = JSON.parse(localStorage.getItem('loanData'));
+
+                    // Podstawowe parametry
+                    $('#loan-amount').val(loanData.loanAmount || 300000);
+                    $('#interest-rate').val(loanData.interestRate || 7.5);
+                    $('#loan-term').val(loanData.loanTerm || 360);
+                    if (loanData.startDate) $('#start-date').val(loanData.startDate);
+                    $(`input[name="payment-type"][value="${loanData.paymentType || 'fixed'}"]`).prop('checked', true);
+
+                    // Parametry dodatkowe
+                    $('#property-price').val(loanData.propertyPrice || 400000);
+                    $('#property-size').val(loanData.propertySize || 50);
+                    $('#life-insurance').val(loanData.lifeInsurance || 0);
+
+                    // Opcje ubezpieczenia
+                    if (loanData.isPercentageInsurance) {
+                        $('#percentage-insurance').prop('checked', true).trigger('change');
+                        $('#insurance-percentage').val(loanData.insurancePercentage || 0.035);
+                    }
+
+                    if (loanData.isRemainingBalanceInsurance) {
+                        $('#remaining-balance-insurance').prop('checked', true).trigger('change');
+                        $('#remaining-insurance-percentage').val(loanData.remainingInsurancePercentage || 0.035);
+                    }
+
+                    // Wczytaj nadpłaty
+                    if (loanData.prepayments && Array.isArray(loanData.prepayments)) {
+                        prepayments = loanData.prepayments;
+                        updatePrepaymentsList();
+                    }
+
+                    // Wczytaj zmiany oprocentowania
+                    if (loanData.interestChanges && Array.isArray(loanData.interestChanges)) {
+                        interestChanges = loanData.interestChanges;
+                        updateInterestChangesList();
+                    }
+                } catch (e) {
+                    console.error('Błąd wczytywania danych:', e);
+                    // W przypadku błędu, zresetuj dane
+                    localStorage.removeItem('loanData');
+                }
+            }
+        }
+
+        // Funkcja zapisująca dane do localStorage
+        function saveToLocalStorage() {
+            const loanData = {
+                // Podstawowe parametry
+                loanAmount: parseFloat($('#loan-amount').val()),
+                interestRate: parseFloat($('#interest-rate').val()),
+                loanTerm: parseInt($('#loan-term').val()),
+                startDate: $('#start-date').val(),
+                paymentType: $('input[name="payment-type"]:checked').val(),
+
+                // Parametry dodatkowe
+                propertyPrice: parseFloat($('#property-price').val()),
+                propertySize: parseFloat($('#property-size').val()),
+                lifeInsurance: parseFloat($('#life-insurance').val()),
+
+                // Opcje ubezpieczenia
+                isPercentageInsurance: $('#percentage-insurance').is(':checked'),
+                insurancePercentage: parseFloat($('#insurance-percentage').val()),
+                isRemainingBalanceInsurance: $('#remaining-balance-insurance').is(':checked'),
+                remainingInsurancePercentage: parseFloat($('#remaining-insurance-percentage').val()),
+
+                // Nadpłaty i zmiany oprocentowania
+                prepayments: prepayments,
+                interestChanges: interestChanges
+            };
+
+            try {
+                localStorage.setItem('loanData', JSON.stringify(loanData));
+                showSaveNotification();
+            } catch (e) {
+                console.error('Błąd zapisywania danych:', e);
+            }
+        }
+
+        // Funkcja wyświetlająca powiadomienie o zapisie
+        function showSaveNotification() {
+            // Usuń istniejące powiadomienie, jeśli istnieje
+            $('.save-notification').remove();
+
+            // Stwórz nowe powiadomienie
+            const notification = $(`
+                    <div class="save-notification">
+                        <i class="material-icons">check_circle</i>
+                        Dane zostały zapisane
+                    </div>
+                `);
+
+            // Dodaj do body i ustaw automatyczne zniknięcie
+            $('body').append(notification);
+            setTimeout(() => {
+                notification.fadeOut(300, function() {
+                    $(this).remove();
+                });
+            }, 2000);
+        }
+
+        // Ustaw dzisiejszą datę jako domyślną
+        document.getElementById('start-date').valueAsDate = new Date();
+
+        // Wczytaj dane z localStorage
+        loadFromLocalStorage();
 
         // Wykrywanie przewijania dla animacji nagłówka
         $('#payments-table-container').on('scroll', function() {
@@ -605,8 +767,21 @@
         $('#percentage-insurance').change(function() {
             if ($(this).is(':checked')) {
                 $('#insurance-percentage-container').show();
+                $('#remaining-balance-insurance').prop('checked', false);
+                $('#remaining-insurance-percentage-container').hide();
             } else {
                 $('#insurance-percentage-container').hide();
+            }
+        });
+
+        // Pokaż/ukryj pola dla ubezpieczenia od pozostałego kapitału
+        $('#remaining-balance-insurance').change(function() {
+            if ($(this).is(':checked')) {
+                $('#remaining-insurance-percentage-container').show();
+                $('#percentage-insurance').prop('checked', false);
+                $('#insurance-percentage-container').hide();
+            } else {
+                $('#remaining-insurance-percentage-container').hide();
             }
         });
 
@@ -655,6 +830,7 @@
             prepayments.push(prepayment);
             updatePrepaymentsList();
             calculateSchedule();
+            saveToLocalStorage();
 
             // Zresetuj pola
             $('#prepayment-amount').val('');
@@ -682,6 +858,7 @@
             interestChanges.push(interestChange);
             updateInterestChangesList();
             calculateSchedule();
+            saveToLocalStorage();
 
             // Zresetuj pola
             $('#interest-change-rate').val('');
@@ -774,6 +951,7 @@
             }
 
             calculateSchedule();
+            saveToLocalStorage();
         });
 
         // Obsługa edycji modyfikacji
@@ -808,11 +986,13 @@
             }
 
             calculateSchedule();
+            saveToLocalStorage();
         });
 
         // Oblicz harmonogram spłat
         $('#calculate-btn').click(function() {
             calculateSchedule();
+            saveToLocalStorage();
         });
 
         function calculateSchedule() {
@@ -823,12 +1003,20 @@
             const paymentType = $('input[name="payment-type"]:checked').val();
             const propertyPrice = parseFloat($('#property-price').val());
             const propertySize = parseFloat($('#property-size').val());
+
+            // Opcje ubezpieczenia
             const isPercentageInsurance = $('#percentage-insurance').is(':checked');
+            const isRemainingBalanceInsurance = $('#remaining-balance-insurance').is(':checked');
             let lifeInsurance = 0;
+            let insurancePercentage = 0;
+            let remainingInsurancePercentage = 0;
 
             if (isPercentageInsurance) {
-                const insurancePercent = parseFloat($('#insurance-percentage').val()) / 100;
-                lifeInsurance = loanAmount * insurancePercent / 12;
+                insurancePercentage = parseFloat($('#insurance-percentage').val()) / 100;
+                lifeInsurance = loanAmount * insurancePercentage / 12;
+            } else if (isRemainingBalanceInsurance) {
+                remainingInsurancePercentage = parseFloat($('#remaining-insurance-percentage').val()) / 100;
+                // Ubezpieczenie będzie obliczane dynamicznie w trakcie obliczania harmonogramu
             } else {
                 lifeInsurance = parseFloat($('#life-insurance').val());
             }
@@ -850,6 +1038,8 @@
                 startDate,
                 paymentType,
                 lifeInsurance,
+                isRemainingBalanceInsurance,
+                remainingInsurancePercentage,
                 [],
                 []
             );
@@ -862,6 +1052,8 @@
                 startDate,
                 paymentType,
                 lifeInsurance,
+                isRemainingBalanceInsurance,
+                remainingInsurancePercentage,
                 prepayments,
                 interestChanges
             );
@@ -870,7 +1062,7 @@
             displaySummary(originalSchedule, modifiedSchedule, propertyPrice, propertySize);
         }
 
-        function calculatePaymentSchedule(loanAmount, initialInterestRate, loanTerm, startDate, paymentType, lifeInsurance, prepayments, interestChanges) {
+        function calculatePaymentSchedule(loanAmount, initialInterestRate, loanTerm, startDate, paymentType, fixedLifeInsurance, isRemainingBalanceInsurance, remainingInsurancePercentage, prepayments, interestChanges) {
             const schedule = [];
             let remainingAmount = loanAmount;
             let totalInterestPaid = 0;
@@ -943,6 +1135,12 @@
 
                 // Oblicz łączną płatność
                 let payment = principal + monthlyInterest;
+
+                // Oblicz ubezpieczenie na podstawie pozostałego kapitału, jeśli włączone
+                let lifeInsurance = fixedLifeInsurance;
+                if (isRemainingBalanceInsurance) {
+                    lifeInsurance = remainingAmount * remainingInsurancePercentage / 12;
+                }
 
                 // Oblicz datę płatności
                 const paymentDate = new Date(startDate);
@@ -1417,6 +1615,11 @@
         function formatDate(date) {
             const months = ['Sty', 'Lut', 'Mar', 'Kwi', 'Maj', 'Cze', 'Lip', 'Sie', 'Wrz', 'Paź', 'Lis', 'Gru'];
             return `${months[date.getMonth()]} ${date.getFullYear()}`;
+        }
+
+        // Automatycznie oblicz harmonogram po załadowaniu strony, jeśli są dane
+        if (localStorage.getItem('loanData')) {
+            calculateSchedule();
         }
     });
 </script>
