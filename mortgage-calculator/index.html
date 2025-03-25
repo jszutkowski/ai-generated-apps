@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kalkulator kredytu hipotecznego</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@mui/material@5.13.1/dist/cdn/material-ui.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .btn-primary {
+            background-color: #1976d2;
+            border-color: #1976d2;
+        }
+        .btn-danger {
+            background-color: #e53935;
+            border-color: #e53935;
+        }
+        .btn-success {
+            background-color: #43a047;
+            border-color: #43a047;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th {
+            background-color: #1976d2;
+            color: white;
+            font-weight: bold;
+            text-align: center;
+            padding: 10px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        td {
+            padding: 8px;
+            text-align: right;
+            border-bottom: 1px solid #ddd;
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        tr:hover {
+            background-color: #e3f2fd;
+        }
+        .payment-summary {
+            background-color: #e3f2fd;
+            font-weight: bold;
+        }
+        .chart-container {
+            height: 400px;
+            margin-top: 20px;
+        }
+        .change-indicator {
+            color: #f57c00;
+            font-weight: bold;
+        }
+        .edit-btn {
+            cursor: pointer;
+            color: #2196f3;
+            margin-right: 5px;
+        }
+        .delete-btn {
+            cursor: pointer;
+            color: #f44336;
+        }
+        .card {
+            margin-bottom: 10px;
+        }
+        .card-header {
+            background-color: #bbdefb;
+        }
+        #payments-table-container {
+            max-height: 600px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center mb-4">Kalkulator kredytu hipotecznego</h1>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Parametry podstawowe</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label for="loan-amount">Kwota kredytu (PLN):</label>
+                            <input type="number" class="form-control" id="loan-amount" value="300000">
+                        </div>
+                        <div class="form-group">
+                            <label for="interest-rate">Oprocentowanie (%):</label>
+                            <input type="number" step="0.01" class="form-control" id="interest-rate" value="7.5">
+                        </div>
+                        <div class="form-group">
+                            <label for="loan-term">Okres kredytowania (miesiące):</label>
+                            <input type="number" class="form-control" id="loan-term" value="360">
+                        </div>
+                        <div class="form-group">
+                            <label for="start-date">Data rozpoczęcia kredytu:</label>
+                            <input type="date" class="form-control" id="start-date">
+                        </div>
+                        <div class="form-group">
+                            <label>Typ rat:</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="payment-type" id="fixed-payment" value="fixed" checked>
+                                <label class="form-check-label" for="fixed-payment">Raty stałe</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="payment-type" id="decreasing-payment" value="decreasing">
+                                <label class="form-check-label" for="decreasing-payment">Raty malejące</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Parametry dodatkowe</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label for="property-price">Cena nieruchomości (PLN):</label>
+                            <input type="number" class="form-control" id="property-price" value="400000">
+                        </div>
+                        <div class="form-group">
+                            <label for="property-size">Metraż (m²):</label>
+                            <input type="number" step="0.01" class="form-control" id="property-size" value="50">
+                        </div>
+                        <div class="form-group">
+                            <label for="life-insurance">Miesięczna kwota ubezpieczenia na życie (PLN):</label>
+                            <input type="number" step="0.01" class="form-control" id="life-insurance" value="0">
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="percentage-insurance">
+                            <label class="form-check-label" for="percentage-insurance">
+                                Ubezpieczenie jako % od kwoty kredytu
+                            </label>
+                        </div>
+                        <div class="form-group" id="insurance-percentage-container" style="display: none;">
+                            <label for="insurance-percentage">Procent ubezpieczenia (%):</label>
+                            <input type="number" step="0.001" class="form-control" id="insurance-percentage" value="0.035">
+                        </div>
+                        <button id="calculate-btn" class="btn btn-primary mt-3 w-100">Oblicz harmonogram</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Dodaj nadpłatę</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label for="prepayment-amount">Kwota nadpłaty (PLN):</label>
+                            <input type="number" class="form-control" id="prepayment-amount">
+                        </div>
+                        <div class="form-group">
+                            <label for="prepayment-installment">Od raty nr:</label>
+                            <input type="number" class="form-control" id="prepayment-installment" min="1">
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="prepayment-recurring">
+                            <label class="form-check-label" for="prepayment-recurring">
+                                Nadpłata cykliczna
+                            </label>
+                        </div>
+                        <div class="form-group" id="prepayment-cycle-container" style="display: none;">
+                            <label for="prepayment-cycle">Co ile miesięcy:</label>
+                            <input type="number" class="form-control" id="prepayment-cycle" min="1" value="1">
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="prepayment-limited">
+                            <label class="form-check-label" for="prepayment-limited">
+                                Ograniczona liczba nadpłat
+                            </label>
+                        </div>
+                        <div class="form-group" id="prepayment-count-container" style="display: none;">
+                            <label for="prepayment-count">Liczba nadpłat:</label>
+                            <input type="number" class="form-control" id="prepayment-count" min="1" value="1">
+                        </div>
+                        <button id="add-prepayment-btn" class="btn btn-success mt-3 w-100">Dodaj nadpłatę</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Dodaj zmianę oprocentowania</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label for="interest-change-rate">Nowe oprocentowanie (%):</label>
+                            <input type="number" step="0.01" class="form-control" id="interest-change-rate">
+                        </div>
+                        <div class="form-group">
+                            <label for="interest-change-installment">Od raty nr:</label>
+                            <input type="number" class="form-control" id="interest-change-installment" min="1">
+                        </div>
+                        <button id="add-interest-change-btn" class="btn btn-success mt-3 w-100">Dodaj zmianę oprocentowania</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container" id="modifications-container" style="display: none;">
+        <h2>Zmiany w harmonogramie</h2>
+
+        <div class="row">
+            <div class="col-md-6">
+                <h3>Nadpłaty</h3>
+                <div id="prepayments-list" class="list-group"></div>
+            </div>
+
+            <div class="col-md-6">
+                <h3>Zmiany oprocentowania</h3>
+                <div id="interest-changes-list" class="list-group"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container" id="payment-schedule-container" style="display: none;">
+        <h2>Harmonogram spłat</h2>
+
+        <div id="payments-table-container">
+            <table class="table table-striped" id="payments-table">
+                <thead>
+                    <tr>
+                        <th>Nr</th>
+                        <th>Data spłaty</th>
+                        <th>Rata</th>
+                        <th>Kapitał</th>
+                        <th>Odsetki</th>
+                        <th>Ubezpieczenie</th>
+                        <th>Spłacony kapitał</th>
+                        <th>Zapłacone odsetki</th>
+                        <th>Pozostały kapitał</th>
+                        <th>Zmiany</th>
+                    </tr>
+                </thead>
+                <tbody id="payments-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="container" id="summary-container" style="display: none;">
+        <h2>Podsumowanie</h2>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h3>Porównanie harmonogramów</h3>
+                    </div>
+                    <div class="card-body" id="comparison-summary"></div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h3>Cena za m²</h3>
+                    </div>
+                    <div class="card-body" id="price-per-sqm-summary"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Czas spłaty kredytu</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="term-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Odsetki</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="interest-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            // Ustaw dzisiejszą datę jako domyślną
+            document.getElementById('start-date').valueAsDate = new Date();
+
+            // Zmienne globalne
+            let prepayments = [];
+            let interestChanges = [];
+            let originalSchedule = [];
+            let modifiedSchedule = [];
+
+            // Pokaż/ukryj pola procentowe dla ubezpieczenia
+            $('#percentage-insurance').change(function() {
+                if ($(this).is(':checked')) {
+                    $('#insurance-percentage-container').show();
+                } else {
+                    $('#insurance-percentage-container').hide();
+                }
+            });
+
+            // Pokaż/ukryj pola dla nadpłat cyklicznych
+            $('#prepayment-recurring').change(function() {
+                if ($(this).is(':checked')) {
+                    $('#prepayment-cycle-container').show();
+                } else {
+                    $('#prepayment-cycle-container').hide();
+                }
+            });
+
+            // Pokaż/ukryj pola dla ograniczonej liczby nadpłat
+            $('#prepayment-limited').change(function() {
+                if ($(this).is(':checked')) {
+                    $('#prepayment-count-container').show();
+                } else {
+                    $('#prepayment-count-container').hide();
+                }
+            });
+
+            // Dodaj nadpłatę
+            $('#add-prepayment-btn').click(function() {
+                const amount = parseFloat($('#prepayment-amount').val());
+                const installment = parseInt($('#prepayment-installment').val());
+                const recurring = $('#prepayment-recurring').is(':checked');
+                const cycle = recurring ? parseInt($('#prepayment-cycle').val()) : 0;
+                const limited = $('#prepayment-limited').is(':checked');
+                const count = limited ? parseInt($('#prepayment-count').val()) : 0;
+
+                if (!amount || !installment) {
+                    alert('Wypełnij wszystkie wymagane pola nadpłaty!');
+                    return;
+                }
+
+                const prepayment = {
+                    id: Date.now(), // Unikalny identyfikator
+                    amount,
+                    installment,
+                    recurring,
+                    cycle,
+                    limited,
+                    count
+                };
+
+                prepayments.push(prepayment);
+                updatePrepaymentsList();
+                calculateSchedule();
+
+                // Zresetuj pola
+                $('#prepayment-amount').val('');
+                $('#prepayment-installment').val('');
+                $('#prepayment-recurring').prop('checked', false).trigger('change');
+                $('#prepayment-limited').prop('checked', false).trigger('change');
+            });
+
+            // Dodaj zmianę oprocentowania
+            $('#add-interest-change-btn').click(function() {
+                const rate = parseFloat($('#interest-change-rate').val());
+                const installment = parseInt($('#interest-change-installment').val());
+
+                if (!rate || !installment) {
+                    alert('Wypełnij wszystkie wymagane pola zmiany oprocentowania!');
+                    return;
+                }
+
+                const interestChange = {
+                    id: Date.now(), // Unikalny identyfikator
+                    rate,
+                    installment
+                };
+
+                interestChanges.push(interestChange);
+                updateInterestChangesList();
+                calculateSchedule();
+
+                // Zresetuj pola
+                $('#interest-change-rate').val('');
+                $('#interest-change-installment').val('');
+            });
+
+            // Funkcja aktualizująca listę nadpłat
+            function updatePrepaymentsList() {
+                const $list = $('#prepayments-list');
+                $list.empty();
+
+                if (prepayments.length === 0) {
+                    $list.append('<p class="text-muted">Brak nadpłat</p>');
+                } else {
+                    prepayments.forEach(function(prepayment) {
+                        let description = `${formatCurrency(prepayment.amount)} od raty ${prepayment.installment}`;
+                        if (prepayment.recurring) {
+                            description += `, cyklicznie co ${prepayment.cycle} mies.`;
+                            if (prepayment.limited) {
+                                description += `, ${prepayment.count} razy`;
+                            } else {
+                                description += `, bezterminowo`;
+                            }
+                        }
+
+                        const $item = $(`
+<div class="list-group-item d-flex justify-content-between align-items-center">
+    <span>${description}</span>
+<div>
+                                    <span class="edit-btn" data-type="prepayment" data-id="${prepayment.id}">
+                                        <i class="material-icons">edit</i>
+                                    </span>
+    <span class="delete-btn" data-type="prepayment" data-id="${prepayment.id}">
+                                        <i class="material-icons">delete</i>
+                                    </span>
+</div>
+</div>
+`);
+
+                        $list.append($item);
+                    });
+                }
+
+                $('#modifications-container').show();
+            }
+
+            // Funkcja aktualizująca listę zmian oprocentowania
+            function updateInterestChangesList() {
+                const $list = $('#interest-changes-list');
+                $list.empty();
+
+                if (interestChanges.length === 0) {
+                    $list.append('<p class="text-muted">Brak zmian oprocentowania</p>');
+                } else {
+                    interestChanges.forEach(function(change) {
+                        const description = `${change.rate.toFixed(2)}% od raty ${change.installment}`;
+
+                        const $item = $(`
+<div class="list-group-item d-flex justify-content-between align-items-center">
+    <span>${description}</span>
+<div>
+                                    <span class="edit-btn" data-type="interest" data-id="${change.id}">
+                                        <i class="material-icons">edit</i>
+                                    </span>
+    <span class="delete-btn" data-type="interest" data-id="${change.id}">
+                                        <i class="material-icons">delete</i>
+                                    </span>
+</div>
+</div>
+`);
+
+                        $list.append($item);
+                    });
+                }
+
+                $('#modifications-container').show();
+            }
+
+            // Obsługa usuwania modyfikacji
+            $(document).on('click', '.delete-btn', function() {
+                const type = $(this).data('type');
+                const id = $(this).data('id');
+
+                if (type === 'prepayment') {
+                    prepayments = prepayments.filter(p => p.id !== id);
+                    updatePrepaymentsList();
+                } else if (type === 'interest') {
+                    interestChanges = interestChanges.filter(i => i.id !== id);
+                    updateInterestChangesList();
+                }
+
+                calculateSchedule();
+            });
+
+            // Obsługa edycji modyfikacji
+            $(document).on('click', '.edit-btn', function() {
+                const type = $(this).data('type');
+                const id = $(this).data('id');
+
+                if (type === 'prepayment') {
+                    const prepayment = prepayments.find(p => p.id === id);
+                    if (prepayment) {
+                        $('#prepayment-amount').val(prepayment.amount);
+                        $('#prepayment-installment').val(prepayment.installment);
+                        $('#prepayment-recurring').prop('checked', prepayment.recurring).trigger('change');
+                        $('#prepayment-cycle').val(prepayment.cycle);
+                        $('#prepayment-limited').prop('checked', prepayment.limited).trigger('change');
+                        $('#prepayment-count').val(prepayment.count);
+
+                        // Usuń starą nadpłatę
+                        prepayments = prepayments.filter(p => p.id !== id);
+                        updatePrepaymentsList();
+                    }
+                } else if (type === 'interest') {
+                    const change = interestChanges.find(i => i.id === id);
+                    if (change) {
+                        $('#interest-change-rate').val(change.rate);
+                        $('#interest-change-installment').val(change.installment);
+
+                        // Usuń starą zmianę
+                        interestChanges = interestChanges.filter(i => i.id !== id);
+                        updateInterestChangesList();
+                    }
+                }
+
+                calculateSchedule();
+            });
+
+            // Oblicz harmonogram spłat
+            $('#calculate-btn').click(function() {
+                calculateSchedule();
+            });
+
+            function calculateSchedule() {
+                const loanAmount = parseFloat($('#loan-amount').val());
+                const initialInterestRate = parseFloat($('#interest-rate').val()) / 100;
+                const loanTerm = parseInt($('#loan-term').val());
+                const startDate = new Date($('#start-date').val());
+                const paymentType = $('input[name="payment-type"]:checked').val();
+                const propertyPrice = parseFloat($('#property-price').val());
+                const propertySize = parseFloat($('#property-size').val());
+                const isPercentageInsurance = $('#percentage-insurance').is(':checked');
+                let lifeInsurance = 0;
+
+                if (isPercentageInsurance) {
+                    const insurancePercent = parseFloat($('#insurance-percentage').val()) / 100;
+                    lifeInsurance = loanAmount * insurancePercent / 12;
+                } else {
+                    lifeInsurance = parseFloat($('#life-insurance').val());
+                }
+
+                if (!loanAmount || !initialInterestRate || !loanTerm || !startDate || !paymentType) {
+                    alert('Wypełnij wszystkie wymagane pola!');
+                    return;
+                }
+
+                // Sortuj nadpłaty i zmiany oprocentowania
+                prepayments.sort((a, b) => a.installment - b.installment);
+                interestChanges.sort((a, b) => a.installment - b.installment);
+
+                // Oblicz oryginalny harmonogram
+                originalSchedule = calculatePaymentSchedule(
+                    loanAmount,
+                    initialInterestRate,
+                    loanTerm,
+                    startDate,
+                    paymentType,
+                    lifeInsurance,
+                    [],
+                    []
+                );
+
+                // Oblicz zmodyfikowany harmonogram
+                modifiedSchedule = calculatePaymentSchedule(
+                    loanAmount,
+                    initialInterestRate,
+                    loanTerm,
+                    startDate,
+                    paymentType,
+                    lifeInsurance,
+                    prepayments,
+                    interestChanges
+                );
+
+                displayPaymentSchedule(modifiedSchedule);
+                displaySummary(originalSchedule, modifiedSchedule, propertyPrice, propertySize);
+            }
+
+            function calculatePaymentSchedule(loanAmount, initialInterestRate, loanTerm, startDate, paymentType, lifeInsurance, prepayments, interestChanges) {
+                const schedule = [];
+                let remainingAmount = loanAmount;
+                let totalInterestPaid = 0;
+                let totalPrincipalPaid = 0;
+                let currentInstallment = 1;
+                let currentInterestRate = initialInterestRate;
+
+                // Aplikuj nadpłaty cykliczne, tworząc kompletną listę nadpłat (rozwinięta)
+                const expandedPrepayments = [];
+                prepayments.forEach(prepayment => {
+                    expandedPrepayments.push({
+                        installment: prepayment.installment,
+                        amount: prepayment.amount
+                    });
+
+                    if (prepayment.recurring) {
+                        let nextInstallment = prepayment.installment + prepayment.cycle;
+                        let count = 1;
+
+                        while (nextInstallment <= loanTerm && (!prepayment.limited || count < prepayment.count)) {
+                            expandedPrepayments.push({
+                                installment: nextInstallment,
+                                amount: prepayment.amount
+                            });
+
+                            nextInstallment += prepayment.cycle;
+                            count++;
+                        }
+                    }
+                });
+
+                // Sortuj rozwinięte nadpłaty według numeru raty
+                expandedPrepayments.sort((a, b) => a.installment - b.installment);
+
+                // Oblicz ratę dla stałych płatności
+                let monthlyPayment = 0;
+                if (paymentType === 'fixed') {
+                    monthlyPayment = calculateMonthlyPayment(loanAmount, initialInterestRate, loanTerm);
+                }
+
+                // Generuj harmonogram spłat
+                while (remainingAmount > 0 && currentInstallment <= loanTerm) {
+                    // Sprawdź, czy mamy zmianę oprocentowania
+                    for (const change of interestChanges) {
+                        if (change.installment === currentInstallment) {
+                            currentInterestRate = change.rate / 100;
+
+                            // Jeśli mamy stałe raty, przelicz miesięczną płatność
+                            if (paymentType === 'fixed') {
+                                monthlyPayment = calculateMonthlyPayment(remainingAmount, currentInterestRate, loanTerm - currentInstallment + 1);
+                            }
+
+                            break;
+                        }
+                    }
+
+                    // Oblicz odsetki dla bieżącej raty
+                    const monthlyInterest = remainingAmount * currentInterestRate / 12;
+
+                    // Oblicz kapitał dla bieżącej raty
+                    let principal = 0;
+                    if (paymentType === 'fixed') {
+                        principal = monthlyPayment - monthlyInterest;
+                    } else {
+                        principal = loanAmount / loanTerm;
+                    }
+
+                    // Upewnij się, że nie spłacamy więcej niż pozostało
+                    principal = Math.min(principal, remainingAmount);
+
+                    // Oblicz łączną płatność
+                    let payment = principal + monthlyInterest;
+
+                    // Oblicz datę płatności
+                    const paymentDate = new Date(startDate);
+                    paymentDate.setMonth(paymentDate.getMonth() + currentInstallment - 1);
+
+                    // Sprawdź, czy mamy nadpłatę dla tej raty
+                    let prepaymentAmount = 0;
+                    const prepaymentForThisInstallment = expandedPrepayments.filter(p => p.installment === currentInstallment);
+
+                    if (prepaymentForThisInstallment.length > 0) {
+                        prepaymentForThisInstallment.forEach(p => {
+                            prepaymentAmount += p.amount;
+                        });
+                    }
+
+                    // Uwzględnij nadpłatę
+                    const totalPrincipal = principal + prepaymentAmount;
+                    remainingAmount -= totalPrincipal;
+
+                    // Aktualizuj sumy
+                    totalPrincipalPaid += totalPrincipal;
+                    totalInterestPaid += monthlyInterest;
+
+                    // Zapisz płatność w harmonogramie
+                    const installment = {
+                        installment: currentInstallment,
+                        date: paymentDate,
+                        payment: payment,
+                        principal: principal,
+                        interest: monthlyInterest,
+                        insurance: lifeInsurance,
+                        totalPrincipalPaid: totalPrincipalPaid,
+                        totalInterestPaid: totalInterestPaid,
+                        remainingAmount: Math.max(0, remainingAmount),
+                        prepayment: prepaymentAmount,
+                        interestRateChange: null
+                    };
+
+                    // Dodaj informację o zmianie oprocentowania
+                    for (const change of interestChanges) {
+                        if (change.installment === currentInstallment) {
+                            installment.interestRateChange = change.rate;
+                            break;
+                        }
+                    }
+
+                    schedule.push(installment);
+
+                    // Jeśli po nadpłatach pozostała kwota jest bardzo mała (błąd zaokrąglenia), zakończ
+                    if (remainingAmount < 0.01) {
+                        remainingAmount = 0;
+                    }
+
+                    // Jeśli raty malejące i ustawiliśmy nadpłatę, to przeliczamy wysokość raty kapitałowej
+                    if (paymentType === 'decreasing' && prepaymentAmount > 0) {
+                        const remainingMonths = loanTerm - currentInstallment;
+                        if (remainingMonths > 0) {
+                            // Aktualizuj ratę kapitałową na podstawie pozostałej kwoty i czasu
+                            principal = remainingAmount / remainingMonths;
+                        }
+                    }
+
+                    currentInstallment++;
+                }
+
+                return schedule;
+            }
+
+            function calculateMonthlyPayment(principal, interestRate, termMonths) {
+                const monthlyRate = interestRate / 12;
+                return principal * monthlyRate * Math.pow(1 + monthlyRate, termMonths) / (Math.pow(1 + monthlyRate, termMonths) - 1);
+            }
+
+            function displayPaymentSchedule(schedule) {
+                const $tbody = $('#payments-body');
+                $tbody.empty();
+
+                schedule.forEach(function(payment) {
+                    const dateFormatted = formatDate(payment.date);
+                    const interestRateChange = payment.interestRateChange !== null ?
+                        `<span class="change-indicator">Zmiana oprocentowania na ${payment.interestRateChange.toFixed(2)}%</span>` : '';
+                    const prepaymentInfo = payment.prepayment > 0 ?
+                        `<span class="change-indicator">Nadpłata: ${formatCurrency(payment.prepayment)}</span>` : '';
+
+                    const changes = [interestRateChange, prepaymentInfo].filter(Boolean).join('<br>');
+
+                    const row = `
+                        <tr>
+                            <td>${payment.installment}</td>
+                            <td>${dateFormatted}</td>
+                            <td>${formatCurrency(payment.payment)}</td>
+                            <td>${formatCurrency(payment.principal)}</td>
+                            <td>${formatCurrency(payment.interest)}</td>
+                            <td>${formatCurrency(payment.insurance)}</td>
+                            <td>${formatCurrency(payment.totalPrincipalPaid)}</td>
+                            <td>${formatCurrency(payment.totalInterestPaid)}</td>
+                            <td>${formatCurrency(payment.remainingAmount)}</td>
+                            <td>${changes}</td>
+                        </tr>
+                    `;
+
+                    $tbody.append(row);
+                });
+
+                $('#payment-schedule-container').show();
+            }
+
+            function displaySummary(originalSchedule, modifiedSchedule, propertyPrice, propertySize) {
+                // Obliczenia do podsumowania
+                const originalTerm = originalSchedule.length;
+                const modifiedTerm = modifiedSchedule.length;
+                const termDifference = originalTerm - modifiedTerm;
+
+                const originalTotalInterest = originalSchedule.length > 0 ?
+                    originalSchedule[originalSchedule.length - 1].totalInterestPaid : 0;
+                const modifiedTotalInterest = modifiedSchedule.length > 0 ?
+                    modifiedSchedule[modifiedSchedule.length - 1].totalInterestPaid : 0;
+                const interestDifference = originalTotalInterest - modifiedTotalInterest;
+
+                const totalInsuranceOriginal = originalSchedule.reduce((sum, payment) => sum + payment.insurance, 0);
+                const totalInsuranceModified = modifiedSchedule.reduce((sum, payment) => sum + payment.insurance, 0);
+
+                // Cena za m²
+                const originalPricePerSqm = propertyPrice / propertySize;
+                const totalCostOriginal = propertyPrice + originalTotalInterest + totalInsuranceOriginal;
+                const originalPricePerSqmWithCosts = totalCostOriginal / propertySize;
+                const totalCostModified = propertyPrice + modifiedTotalInterest + totalInsuranceModified;
+                const modifiedPricePerSqmWithCosts = totalCostModified / propertySize;
+
+                // Podsumowanie porównawcze
+                let termComparison = '';
+                if (termDifference > 0) {
+                    termComparison = `Okres kredytowania <strong>krótszy o ${termDifference} miesięcy</strong> (${(termDifference / 12).toFixed(1)} lat)`;
+                } else if (termDifference < 0) {
+                    termComparison = `Okres kredytowania <strong>dłuższy o ${Math.abs(termDifference)} miesięcy</strong> (${(Math.abs(termDifference) / 12).toFixed(1)} lat)`;
+                } else {
+                    termComparison = 'Okres kredytowania <strong>bez zmian</strong>';
+                }
+
+                let interestComparison = '';
+                if (interestDifference > 0) {
+                    interestComparison = `Zapłacisz <strong>mniej odsetek o ${formatCurrency(interestDifference)}</strong> (${(interestDifference / originalTotalInterest * 100).toFixed(2)}%)`;
+                } else if (interestDifference < 0) {
+                    interestComparison = `Zapłacisz <strong>więcej odsetek o ${formatCurrency(Math.abs(interestDifference))}</strong> (${(Math.abs(interestDifference) / originalTotalInterest * 100).toFixed(2)}%)`;
+                } else {
+                    interestComparison = 'Kwota odsetek <strong>bez zmian</strong>';
+                }
+
+                const comparisonHtml = `
+                    <p>${termComparison}</p>
+                    <p>${interestComparison}</p>
+                    <p>Odsetki po zmianach: <strong>${formatCurrency(modifiedTotalInterest)}</strong></p>
+                    <p>Odsetki bez zmian: <strong>${formatCurrency(originalTotalInterest)}</strong></p>
+                    <p>Ubezpieczenie po zmianach: <strong>${formatCurrency(totalInsuranceModified)}</strong></p>
+                    <p>Ubezpieczenie bez zmian: <strong>${formatCurrency(totalInsuranceOriginal)}</strong></p>
+                `;
+
+                const pricePerSqmHtml = `
+                    <p>Oryginalna cena za m²: <strong>${formatCurrency(originalPricePerSqm)}</strong></p>
+                    <p>Cena za m² z odsetkami (bez zmian): <strong>${formatCurrency(originalPricePerSqmWithCosts)}</strong></p>
+                    <p>Cena za m² z odsetkami (po zmianach): <strong>${formatCurrency(modifiedPricePerSqmWithCosts)}</strong></p>
+                    <p>Różnica w cenie za m²: <strong>${formatCurrency(originalPricePerSqmWithCosts - modifiedPricePerSqmWithCosts)}</strong></p>
+                `;
+
+                $('#comparison-summary').html(comparisonHtml);
+                $('#price-per-sqm-summary').html(pricePerSqmHtml);
+
+                // Rysuj wykresy
+                createTermChart(originalTerm, modifiedTerm);
+                createInterestChart(originalTotalInterest, modifiedTotalInterest);
+
+                $('#summary-container').show();
+            }
+
+            function createTermChart(originalTerm, modifiedTerm) {
+                const ctx = document.getElementById('term-chart').getContext('2d');
+
+                // Zniszcz istniejący wykres, jeśli istnieje
+                if (window.termChart) {
+                    window.termChart.destroy();
+                }
+
+                window.termChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Oryginalny harmonogram', 'Po zmianach'],
+                        datasets: [{
+                            label: 'Czas spłaty (lata)',
+                            data: [originalTerm / 12, modifiedTerm / 12],
+                            backgroundColor: [
+                                'rgba(54, 162, 235, 0.6)',
+                                'rgba(75, 192, 192, 0.6)'
+                            ],
+                            borderColor: [
+                                'rgb(54, 162, 235)',
+                                'rgb(75, 192, 192)'
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Lata'
+                                }
+                            }
+                        },
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Porównanie czasu spłaty kredytu'
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const years = context.parsed.y;
+                                        const months = Math.round(years * 12);
+                                        return `${years.toFixed(1)} lat (${months} miesięcy)`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            function createInterestChart(originalTotalInterest, modifiedTotalInterest) {
+                const ctx = document.getElementById('interest-chart').getContext('2d');
+
+                // Zniszcz istniejący wykres, jeśli istnieje
+                if (window.interestChart) {
+                    window.interestChart.destroy();
+                }
+
+                window.interestChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Oryginalny harmonogram', 'Po zmianach'],
+                        datasets: [{
+                            label: 'Odsetki',
+                            data: [originalTotalInterest, modifiedTotalInterest],
+                            backgroundColor: [
+                                'rgba(255, 99, 132, 0.6)',
+                                'rgba(153, 102, 255, 0.6)'
+                            ],
+                            borderColor: [
+                                'rgb(255, 99, 132)',
+                                'rgb(153, 102, 255)'
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'PLN'
+                                }
+                            }
+                        },
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Porównanie zapłaconych odsetek'
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return formatCurrency(context.parsed.y);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Funkcje pomocnicze
+            function formatCurrency(amount) {
+                return new Intl.NumberFormat('pl-PL', {
+                    style: 'currency',
+                    currency: 'PLN',
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                }).format(amount);
+            }
+
+            function formatDate(date) {
+                const months = ['Sty', 'Lut', 'Mar', 'Kwi', 'Maj', 'Cze', 'Lip', 'Sie', 'Wrz', 'Paź', 'Lis', 'Gru'];
+                return `${months[date.getMonth()]} ${date.getFullYear()}`;
+            }
+        });
+    </script>
+</body>
+</html>
