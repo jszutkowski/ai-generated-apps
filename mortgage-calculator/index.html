@@ -243,6 +243,20 @@
             margin-top: 20px;
             border-radius: var(--border-radius);
             box-shadow: var(--box-shadow);
+            position: relative; /* Dla nagłówka fixed */
+        }
+
+        #payments-table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        /* Animacja podświetlająca nagłówek podczas scrollowania */
+        #payments-table-container.scrolled #payments-table thead th {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
         }
 
         .list-group-item {
@@ -577,6 +591,15 @@
         let interestChanges = [];
         let originalSchedule = [];
         let modifiedSchedule = [];
+
+        // Wykrywanie przewijania dla animacji nagłówka
+        $('#payments-table-container').on('scroll', function() {
+            if ($(this).scrollTop() > 10) {
+                $(this).addClass('scrolled');
+            } else {
+                $(this).removeClass('scrolled');
+            }
+        });
 
         // Pokaż/ukryj pola procentowe dla ubezpieczenia
         $('#percentage-insurance').change(function() {
@@ -1023,6 +1046,9 @@
 
                 $tbody.append(row);
             });
+
+            // Upewnij się, że scroll jest na początku tabeli
+            $('#payments-table-container').scrollTop(0);
 
             $('#payment-schedule-container').show();
         }
